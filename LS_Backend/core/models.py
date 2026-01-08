@@ -5,9 +5,10 @@ class User(Document):
     email = StringField(required=True, unique=True)
     password_hash = StringField(required=True)
     name = StringField(required=True)
-    role = StringField(default='user')  # user/admin
+    role = StringField(default='user')  # user/admin/support_agent
     address = StringField()
     contact_number = StringField()
+    is_support_agent_approved = StringField(default='false')  # For support agent approval
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -68,3 +69,50 @@ class Notification(Document):
     updated_at = DateTimeField(default=datetime.utcnow)
 
     meta = {'collection': 'notifications', 'indexes': ['recipient_id', 'is_read', 'created_at']}
+
+class SupportTicket(Document):
+    customer_id = StringField(required=True)  # Reference to User
+    delivery_id = StringField()  # Reference to Delivery (optional, but linked after delivery)
+    agent_id = StringField()  # Reference to User with role=support_agent
+    subject = StringField(required=True)
+    description = StringField(required=True)
+    category = StringField(required=True)  # Damaged, Lost, Late, Quality, Other
+    status = StringField(default='Open')  # Open, In Progress, On Hold, Resolved, Closed
+    priority = StringField(default='Medium')  # Low, Medium, High
+    resolved_at = DateTimeField()
+    closed_at = DateTimeField()
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'support_tickets', 'indexes': ['customer_id', 'agent_id', 'status', 'created_at']}
+
+
+class TicketInternalNote(Document):
+    ticket_id = StringField(required=True)  # Reference to SupportTicket
+    agent_id = StringField(required=True)  # Reference to User
+    note = StringField(required=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'ticket_internal_notes'}
+
+
+class SupportFAQ(Document):
+    question = StringField(required=True)
+    answer = StringField(required=True)
+    category = StringField(required=True)  # Damaged, Lost, Late, Quality, Other
+    is_active = StringField(default='true')
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'support_faq', 'indexes': ['category', 'is_active']}
+
+
+class TicketFeedback(Document):
+    ticket_id = StringField(required=True, unique=True)  # Reference to SupportTicket
+    customer_id = StringField(required=True)  # Reference to User
+    agent_id = StringField(required=True)  # Reference to User (agent who handled it)
+    rating = StringField(required=True)  # 1-5
+    comment = StringField()
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'ticket_feedback'}

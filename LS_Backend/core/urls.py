@@ -6,7 +6,11 @@ from .views import (
     DriverDeliveriesView, DriverDeliveryStatusUpdateView,
     TrackDeliveryView, TrackDeliveryByPhoneView, ReviewListCreateView, DeliveryReviewsView,
     NotificationsView, NotificationDetailView, MarkNotificationAsReadView, MarkAllNotificationsAsReadView,
-    DeleteNotificationView, UnreadNotificationCountView, PriceEstimateView
+    DeleteNotificationView, UnreadNotificationCountView, PriceEstimateView,
+    SupportAgentRegisterView, ApproveAgentView, CreateSupportTicketView, CustomerTicketsView,
+    TicketDetailView, AssignToSelfView, UpdateTicketStatusView, ReassignTicketView,
+    AddInternalNoteView, SubmitTicketFeedbackView, SupportFAQListView, AdminTicketsView, AgentTicketsView,
+    AdminSupportAgentsView
 )
 
 urlpatterns = [
@@ -51,4 +55,20 @@ urlpatterns = [
     path('notifications/<str:notification_id>/', NotificationDetailView.as_view(), name='notification-detail'),
     path('notifications/<str:notification_id>/read/', MarkNotificationAsReadView.as_view(), name='mark-read'),
     path('notifications/<str:notification_id>/delete/', DeleteNotificationView.as_view(), name='delete-notification'),
+    
+    # Customer Support
+    path('support/register-agent/', SupportAgentRegisterView.as_view(), name='register-agent'),
+    path('admin/approve-agent/<str:agent_id>/', ApproveAgentView.as_view(), name='approve-agent'),
+    path('support/tickets/create/', CreateSupportTicketView.as_view(), name='create-ticket'),
+    path('support/tickets/', CustomerTicketsView.as_view(), name='customer-tickets'),
+    path('support/tickets/<str:ticket_id>/', TicketDetailView.as_view(), name='ticket-detail'),
+    path('support/tickets/<str:ticket_id>/assign-self/', AssignToSelfView.as_view(), name='assign-to-self'),
+    path('support/tickets/<str:ticket_id>/update-status/', UpdateTicketStatusView.as_view(), name='update-status'),
+    path('support/tickets/<str:ticket_id>/reassign/', ReassignTicketView.as_view(), name='reassign-ticket'),
+    path('support/tickets/<str:ticket_id>/add-note/', AddInternalNoteView.as_view(), name='add-note'),
+    path('support/tickets/<str:ticket_id>/feedback/', SubmitTicketFeedbackView.as_view(), name='submit-feedback'),
+    path('support/faq/', SupportFAQListView.as_view(), name='faq-list'),
+    path('admin/support/tickets/', AdminTicketsView.as_view(), name='admin-tickets'),
+    path('admin/support-agents/', AdminSupportAgentsView.as_view(), name='admin-support-agents'),
+    path('agent/tickets/', AgentTicketsView.as_view(), name='agent-tickets'),
 ]

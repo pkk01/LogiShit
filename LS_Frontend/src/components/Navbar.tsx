@@ -131,6 +131,12 @@ export default function Navbar() {
                   <History className="w-4 h-4" /> History
                 </Link>
                 <Link
+                  to="/support"
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all shadow-md shadow-orange-600/20"
+                >
+                  Support
+                </Link>
+                <Link
                   to="/new-delivery"
                   className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-600 rounded-lg transition-all shadow-md shadow-primary/20"
                 >
@@ -161,6 +167,22 @@ export default function Navbar() {
                   className="px-4 py-2 text-sm font-medium text-textSecondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                 >
                   Manage Users
+                </Link>
+                <Link
+                  to="/admin/support"
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-all shadow-md shadow-purple-600/20"
+                >
+                  Support Management
+                </Link>
+              </>
+            )}
+            {token && role === 'support_agent' && (
+              <>
+                <Link
+                  to="/agent/dashboard"
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1"
+                >
+                  My Tickets
                 </Link>
               </>
             )}

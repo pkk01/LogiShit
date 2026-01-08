@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import User, Delivery, Payment, Review, Notification
+from .models import (User, Delivery, Payment, Review, Notification, 
+                     SupportTicket, TicketInternalNote, SupportFAQ, TicketFeedback)
 
 class UserSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
@@ -107,4 +108,64 @@ class PriceEstimateSerializer(serializers.Serializer):
     delivery_city = serializers.CharField(required=True, min_length=1)
     delivery_state = serializers.CharField(required=True, min_length=1)
 
+
+# Support Ticket Serializers
+class SupportTicketSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    customer_id = serializers.CharField(read_only=True)
+    delivery_id = serializers.CharField(required=False, allow_blank=True)
+    agent_id = serializers.CharField(read_only=True, required=False, allow_blank=True)
+    subject = serializers.CharField(required=True)
+    description = serializers.CharField(required=True)
+    category = serializers.CharField(required=True)  # Damaged, Lost, Late, Quality, Other
+    status = serializers.CharField(read_only=True)
+    priority = serializers.CharField(read_only=True)
+    resolved_at = serializers.DateTimeField(read_only=True, required=False)
+    closed_at = serializers.DateTimeField(read_only=True, required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+
+class TicketStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.CharField(required=True)  # In Progress, On Hold, Resolved, Closed
+    priority = serializers.CharField(required=False)  # Low, Medium, High
+
+
+class TicketReassignSerializer(serializers.Serializer):
+    agent_id = serializers.CharField(required=True)
+
+
+class TicketInternalNoteSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    ticket_id = serializers.CharField(read_only=True)
+    agent_id = serializers.CharField(read_only=True)
+    note = serializers.CharField(required=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class SupportFAQSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    question = serializers.CharField(required=True)
+    answer = serializers.CharField(required=True)
+    category = serializers.CharField(required=True)
+    is_active = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+
+class TicketFeedbackSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    ticket_id = serializers.CharField(read_only=True)
+    customer_id = serializers.CharField(read_only=True)
+    agent_id = serializers.CharField(read_only=True)
+    rating = serializers.CharField(required=True)  # 1-5
+    comment = serializers.CharField(required=False, allow_blank=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class SupportAgentRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True)
+    name = serializers.CharField(required=True)
+    contact_number = serializers.CharField(required=False)
 

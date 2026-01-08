@@ -5,13 +5,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 import bcrypt
 from datetime import datetime
-from .models import User, Delivery, Payment, Review, Notification
+from .models import (User, Delivery, Payment, Review, Notification,
+                     SupportTicket, TicketInternalNote, SupportFAQ, TicketFeedback)
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     DeliverySerializer, DeliveryStatusUpdateSerializer,
     PaymentSerializer, ReviewSerializer, DeliveryEditSerializer,
     DeliveryCancelSerializer, DeliveryDriverAssignSerializer,
-    NotificationSerializer, PriceEstimateSerializer
+    NotificationSerializer, PriceEstimateSerializer,
+    SupportTicketSerializer, TicketStatusUpdateSerializer, TicketReassignSerializer,
+    TicketInternalNoteSerializer, SupportFAQSerializer, TicketFeedbackSerializer,
+    SupportAgentRegisterSerializer
 )
 from .notification_utils import (
     notify_admin_on_delivery_created, notify_user_on_delivery_updated,
@@ -733,7 +737,13 @@ class AdminUserDetailView(APIView):
         user.email = request.data.get('email', user.email)
         user.contact_number = request.data.get('contact_number', user.contact_number)
         user.address = request.data.get('address', user.address)
-        user.role = request.data.get('role', user.role)
+        new_role = request.data.get('role', user.role)
+        
+        # If changing to support_agent, automatically approve them
+        if new_role == 'support_agent':
+            user.is_support_agent_approved = 'true'
+        
+        user.role = new_role
         user.updated_at = datetime.utcnow()
         user.save()
         
@@ -1180,4 +1190,608 @@ class UnreadNotificationCountView(APIView):
         
         return Response({
             "unread_count": unread_count
+        }, status=status.HTTP_200_OK)
+
+# ==================== CUSTOMER SUPPORT SYSTEM ====================
+
+class SupportAgentRegisterView(APIView):
+    """Register a new support agent (requires admin approval)"""
+    def post(self, request):
+        serializer = SupportAgentRegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        if User.objects(email=data['email']).first():
+            return Response({"error": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        hashed_pw = bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt()).decode()
+        user = User(
+            email=data['email'],
+            password_hash=hashed_pw,
+            name=data['name'],
+            contact_number=data.get('contact_number', ''),
+            role='support_agent',
+            is_support_agent_approved='false'
+        )
+        user.save()
+        
+        # Notify admin about new agent registration
+        admins = User.objects(role='admin')
+        for admin in admins:
+            notification = Notification(
+                recipient_id=str(admin.id),
+                recipient_role='admin',
+                title='New Support Agent Registration',
+                message=f'New support agent {user.name} ({user.email}) is waiting for approval',
+                notification_type='important',
+                related_user_id=str(user.id),
+                action_url=f'/admin/support-agents/{str(user.id)}/'
+            )
+            notification.save()
+        
+        return Response({
+            "message": "Registration successful. Waiting for admin approval.",
+            "user": {
+                "id": str(user.id),
+                "email": user.email,
+                "name": user.name,
+                "role": user.role
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class ApproveAgentView(APIView):
+    """Admin approves a support agent"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, agent_id):
+        # Check if user is admin
+        user_id = getattr(request.user, 'id', None)
+        admin = User.objects(id=user_id, role='admin').first()
+        if not admin:
+            return Response({"error": "Only admins can approve agents"}, status=status.HTTP_403_FORBIDDEN)
+        
+        agent = User.objects(id=agent_id, role='support_agent').first()
+        if not agent:
+            return Response({"error": "Agent not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        agent.is_support_agent_approved = 'true'
+        agent.updated_at = datetime.utcnow()
+        agent.save()
+        
+        # Notify agent
+        notification = Notification(
+            recipient_id=str(agent.id),
+            recipient_role='support_agent',
+            title='Agent Approval Confirmed',
+            message='Your agent account has been approved. You can now access the agent dashboard.',
+            notification_type='success'
+        )
+        notification.save()
+        
+        return Response({
+            "message": "Agent approved successfully"
+        }, status=status.HTTP_200_OK)
+
+
+class CreateSupportTicketView(APIView):
+    """Customer creates a support ticket"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = SupportTicketSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        user_id = getattr(request.user, 'id', None)
+        data = serializer.validated_data
+        
+        ticket = SupportTicket(
+            customer_id=user_id,
+            delivery_id=data.get('delivery_id', ''),
+            subject=data['subject'],
+            description=data['description'],
+            category=data['category'],
+            status='Open',
+            priority='Medium'
+        )
+        ticket.save()
+        
+        # Notify all support agents and admins
+        agents = User.objects(role='support_agent', is_support_agent_approved='true')
+        admins = User.objects(role='admin')
+        
+        for agent in agents:
+            notification = Notification(
+                recipient_id=str(agent.id),
+                recipient_role='support_agent',
+                title=f'New Support Ticket: {ticket.subject}',
+                message=f'A new support ticket has been created.',
+                notification_type='important',
+                related_user_id=user_id,
+                action_url=f'/support/tickets/{str(ticket.id)}/'
+            )
+            notification.save()
+        
+        for admin in admins:
+            notification = Notification(
+                recipient_id=str(admin.id),
+                recipient_role='admin',
+                title=f'New Support Ticket: {ticket.subject}',
+                message=f'A new support ticket has been created by a customer.',
+                notification_type='info',
+                related_user_id=user_id,
+                action_url=f'/support/tickets/{str(ticket.id)}/'
+            )
+            notification.save()
+        
+        return Response({
+            "message": "Support ticket created successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "subject": ticket.subject,
+                "status": ticket.status,
+                "created_at": ticket.created_at
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class CustomerTicketsView(APIView):
+    """Customer views their own support tickets"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_id = getattr(request.user, 'id', None)
+        
+        tickets = SupportTicket.objects(customer_id=user_id).order_by('-created_at')
+        
+        ticket_list = []
+        for ticket in tickets:
+            ticket_list.append({
+                "id": str(ticket.id),
+                "subject": ticket.subject,
+                "description": ticket.description,
+                "category": ticket.category,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "agent_id": ticket.agent_id,
+                "created_at": ticket.created_at,
+                "updated_at": ticket.updated_at,
+                "resolved_at": ticket.resolved_at
+            })
+        
+        return Response({
+            "tickets": ticket_list
+        }, status=status.HTTP_200_OK)
+
+
+class TicketDetailView(APIView):
+    """View ticket details and internal notes"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check permissions (customer, assigned agent, or admin)
+        user = User.objects(id=user_id).first()
+        if user.role == 'user' and ticket.customer_id != user_id:
+            return Response({"error": "You can only view your own tickets"}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'support_agent' and ticket.agent_id != user_id:
+            return Response({"error": "You can only view assigned tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get internal notes (only for agents and admins)
+        internal_notes = []
+        if user.role in ['support_agent', 'admin']:
+            notes = TicketInternalNote.objects(ticket_id=ticket_id).order_by('created_at')
+            for note in notes:
+                internal_notes.append({
+                    "id": str(note.id),
+                    "agent_id": note.agent_id,
+                    "note": note.note,
+                    "created_at": note.created_at
+                })
+        
+        return Response({
+            "ticket": {
+                "id": str(ticket.id),
+                "subject": ticket.subject,
+                "description": ticket.description,
+                "category": ticket.category,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "agent_id": ticket.agent_id,
+                "customer_id": ticket.customer_id,
+                "created_at": ticket.created_at,
+                "updated_at": ticket.updated_at,
+                "resolved_at": ticket.resolved_at
+            },
+            "internal_notes": internal_notes
+        }, status=status.HTTP_200_OK)
+
+
+class AssignToSelfView(APIView):
+    """Support agent assigns ticket to themselves"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is a support agent
+        user = User.objects(id=user_id, role='support_agent', is_support_agent_approved='true').first()
+        if not user:
+            return Response({"error": "Only approved support agents can assign tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if ticket.agent_id:
+            return Response({"error": "Ticket is already assigned"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket.agent_id = user_id
+        ticket.status = 'In Progress'
+        ticket.updated_at = datetime.utcnow()
+        ticket.save()
+        
+        # Notify customer
+        notification = Notification(
+            recipient_id=ticket.customer_id,
+            recipient_role='user',
+            title='Support Ticket Assigned',
+            message=f'Your support ticket "{ticket.subject}" has been assigned to an agent.',
+            notification_type='info',
+            action_url=f'/support/tickets/{str(ticket.id)}/'
+        )
+        notification.save()
+        
+        return Response({
+            "message": "Ticket assigned to you successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "status": ticket.status,
+                "agent_id": ticket.agent_id
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class UpdateTicketStatusView(APIView):
+    """Update ticket status and priority"""
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        serializer = TicketStatusUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check permissions (assigned agent or admin)
+        user = User.objects(id=user_id).first()
+        if user.role == 'support_agent' and ticket.agent_id != user_id:
+            return Response({"error": "You can only update assigned tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        data = serializer.validated_data
+        old_status = ticket.status
+        ticket.status = data['status']
+        
+        if 'priority' in data:
+            ticket.priority = data['priority']
+        
+        if data['status'] == 'Resolved':
+            ticket.resolved_at = datetime.utcnow()
+        
+        if data['status'] == 'Closed':
+            ticket.closed_at = datetime.utcnow()
+        
+        ticket.updated_at = datetime.utcnow()
+        ticket.save()
+        
+        # Notify customer about status change
+        notification = Notification(
+            recipient_id=ticket.customer_id,
+            recipient_role='user',
+            title='Support Ticket Updated',
+            message=f'Your support ticket status changed from {old_status} to {data["status"]}.',
+            notification_type='info',
+            action_url=f'/support/tickets/{str(ticket.id)}/'
+        )
+        notification.save()
+        
+        # Notify admin
+        admins = User.objects(role='admin')
+        for admin in admins:
+            notification = Notification(
+                recipient_id=str(admin.id),
+                recipient_role='admin',
+                title='Support Ticket Updated',
+                message=f'Ticket "{ticket.subject}" status changed to {data["status"]}.',
+                notification_type='info',
+                related_user_id=user_id,
+                action_url=f'/support/tickets/{str(ticket.id)}/'
+            )
+            notification.save()
+        
+        return Response({
+            "message": "Ticket status updated successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "status": ticket.status,
+                "priority": ticket.priority
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class ReassignTicketView(APIView):
+    """Admin reassigns ticket to another agent"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is admin
+        user = User.objects(id=user_id, role='admin').first()
+        if not user:
+            return Response({"error": "Only admins can reassign tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = TicketReassignSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        new_agent_id = serializer.validated_data['agent_id']
+        agent = User.objects(id=new_agent_id, role='support_agent', is_support_agent_approved='true').first()
+        if not agent:
+            return Response({"error": "Agent not found or not approved"}, status=status.HTTP_404_NOT_FOUND)
+        
+        old_agent_id = ticket.agent_id
+        ticket.agent_id = new_agent_id
+        ticket.updated_at = datetime.utcnow()
+        ticket.save()
+        
+        # Notify new agent
+        notification = Notification(
+            recipient_id=new_agent_id,
+            recipient_role='support_agent',
+            title='Ticket Reassigned',
+            message=f'Ticket "{ticket.subject}" has been reassigned to you.',
+            notification_type='info',
+            action_url=f'/support/tickets/{str(ticket.id)}/'
+        )
+        notification.save()
+        
+        return Response({
+            "message": "Ticket reassigned successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "agent_id": ticket.agent_id
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class AddInternalNoteView(APIView):
+    """Support agent adds internal note to ticket"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is support agent
+        user = User.objects(id=user_id, role='support_agent').first()
+        if not user:
+            return Response({"error": "Only support agents can add internal notes"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = TicketInternalNoteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        note = TicketInternalNote(
+            ticket_id=ticket_id,
+            agent_id=user_id,
+            note=serializer.validated_data['note']
+        )
+        note.save()
+        
+        return Response({
+            "message": "Internal note added successfully",
+            "note": {
+                "id": str(note.id),
+                "note": note.note,
+                "created_at": note.created_at
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class SubmitTicketFeedbackView(APIView):
+    """Customer submits feedback on resolved ticket"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        serializer = TicketFeedbackSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if ticket.customer_id != user_id:
+            return Response({"error": "You can only submit feedback for your own tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if ticket.status != 'Resolved':
+            return Response({"error": "Feedback can only be submitted for resolved tickets"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if feedback already exists
+        existing_feedback = TicketFeedback.objects(ticket_id=ticket_id).first()
+        if existing_feedback:
+            return Response({"error": "Feedback already submitted for this ticket"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        feedback = TicketFeedback(
+            ticket_id=ticket_id,
+            customer_id=user_id,
+            agent_id=ticket.agent_id,
+            rating=serializer.validated_data['rating'],
+            comment=serializer.validated_data.get('comment', '')
+        )
+        feedback.save()
+        
+        return Response({
+            "message": "Feedback submitted successfully",
+            "feedback": {
+                "id": str(feedback.id),
+                "rating": feedback.rating,
+                "created_at": feedback.created_at
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class SupportFAQListView(APIView):
+    """List FAQs by category"""
+    
+    def get(self, request):
+        category = request.query_params.get('category', '')
+        
+        if category:
+            faqs = SupportFAQ.objects(category=category, is_active='true').order_by('-created_at')
+        else:
+            faqs = SupportFAQ.objects(is_active='true').order_by('-created_at')
+        
+        faq_list = []
+        for faq in faqs:
+            faq_list.append({
+                "id": str(faq.id),
+                "question": faq.question,
+                "answer": faq.answer,
+                "category": faq.category
+            })
+        
+        return Response({
+            "faqs": faq_list
+        }, status=status.HTTP_200_OK)
+
+
+class AdminTicketsView(APIView):
+    """Admin views all support tickets"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is admin
+        user = User.objects(id=user_id, role='admin').first()
+        if not user:
+            return Response({"error": "Only admins can view all tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        status_filter = request.query_params.get('status', '')
+        
+        if status_filter:
+            tickets = SupportTicket.objects(status=status_filter).order_by('-created_at')
+        else:
+            tickets = SupportTicket.objects().order_by('-created_at')
+        
+        ticket_list = []
+        for ticket in tickets:
+            customer = User.objects(id=ticket.customer_id).first()
+            agent = User.objects(id=ticket.agent_id).first() if ticket.agent_id else None
+            
+            ticket_list.append({
+                "id": str(ticket.id),
+                "subject": ticket.subject,
+                "category": ticket.category,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "customer_name": customer.name if customer else "Unknown",
+                "agent_name": agent.name if agent else "Unassigned",
+                "created_at": ticket.created_at,
+                "updated_at": ticket.updated_at
+            })
+        
+        return Response({
+            "tickets": ticket_list
+        }, status=status.HTTP_200_OK)
+
+
+class AgentTicketsView(APIView):
+    """Support agent views assigned tickets"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is support agent
+        user = User.objects(id=user_id, role='support_agent', is_support_agent_approved='true').first()
+        if not user:
+            return Response({"error": "Only approved support agents can view assigned tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        status_filter = request.query_params.get('status', '')
+        
+        if status_filter:
+            tickets = SupportTicket.objects(agent_id=user_id, status=status_filter).order_by('-created_at')
+        else:
+            tickets = SupportTicket.objects(agent_id=user_id).order_by('-created_at')
+        
+        ticket_list = []
+        for ticket in tickets:
+            customer = User.objects(id=ticket.customer_id).first()
+            
+            ticket_list.append({
+                "id": str(ticket.id),
+                "subject": ticket.subject,
+                "description": ticket.description,
+                "category": ticket.category,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "customer_name": customer.name if customer else "Unknown",
+                "customer_id": ticket.customer_id,
+                "created_at": ticket.created_at,
+                "updated_at": ticket.updated_at
+            })
+        
+        return Response({
+            "tickets": ticket_list
+        }, status=status.HTTP_200_OK)
+
+
+class AdminSupportAgentsView(APIView):
+    """Admin gets list of all support agents"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is admin
+        user = User.objects(id=user_id, role='admin').first()
+        if not user:
+            return Response({"error": "Only admins can view support agents"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all approved support agents
+        agents = User.objects(role='support_agent', is_support_agent_approved='true')
+        
+        agent_list = []
+        for agent in agents:
+            agent_list.append({
+                "id": str(agent.id),
+                "name": agent.name,
+                "email": agent.email
+            })
+        
+        return Response({
+            "agents": agent_list
         }, status=status.HTTP_200_OK)

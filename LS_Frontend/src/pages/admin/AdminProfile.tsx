@@ -243,6 +243,7 @@ export default function AdminProfile() {
               >
                 <option value="user">User</option>
                 <option value="driver">Driver</option>
+                <option value="support_agent">Support Agent</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

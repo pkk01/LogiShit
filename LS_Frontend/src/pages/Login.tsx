@@ -17,7 +17,22 @@ export default function Login() {
       localStorage.setItem('role', res.data.user.role)
       localStorage.setItem('user_id', res.data.user.id)
       localStorage.setItem('user_name', res.data.user.name || '')
-      window.location.href = '/'
+      
+      // Redirect based on role
+      const role = res.data.user.role
+      switch (role) {
+        case 'admin':
+          window.location.href = '/admin/deliveries'
+          break
+        case 'driver':
+          window.location.href = '/driver/dashboard'
+          break
+        case 'support_agent':
+          window.location.href = '/agent/dashboard'
+          break
+        default:
+          window.location.href = '/dashboard'
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Login failed')
     }
