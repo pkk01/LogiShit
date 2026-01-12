@@ -126,7 +126,12 @@ export default function NotificationDropdown({ isOpen, onClose, onNotificationCl
     if (minutes < 60) return `${minutes}m ago`
     if (hours < 24) return `${hours}h ago`
     if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
+    
+    // Format date with IST timezone
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const utcDate = date.getTime() + date.getTimezoneOffset() * 60 * 1000
+    const istDate = new Date(utcDate + istOffset)
+    return istDate.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })
   }
 
   if (!isOpen) return null

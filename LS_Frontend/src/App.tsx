@@ -3,6 +3,7 @@ import AgentDashboard from './components/AgentDashboard'
 import Footer from './components/Footer'
 import Navbar from './components/Navbar'
 import TicketDetailView from './components/TicketDetailView'
+import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminDeliveries from './pages/admin/AdminDeliveries'
 import AdminProfile from './pages/admin/AdminProfile'
 import AdminUsers from './pages/admin/AdminUsers'
@@ -43,6 +44,8 @@ export default function App() {
           <Route path="/order-history" element={<RequireAuth><OrderHistory /></RequireAuth>} />
           <Route path="/track" element={<Track />} />
           <Route path="/driver/dashboard" element={<RequireAuth><DriverDashboard /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+          <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
           <Route path="/admin/deliveries" element={<RequireAuth><AdminDeliveries /></RequireAuth>} />
           <Route path="/admin/users" element={<RequireAuth><AdminUsers /></RequireAuth>} />
           <Route path="/admin/users/:userId/profile" element={<RequireAuth><AdminProfile /></RequireAuth>} />

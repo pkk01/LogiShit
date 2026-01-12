@@ -1,4 +1,4 @@
-import { BadgeCheck, Bell, History, LogOut, Moon, Settings, Sun, Truck, User } from 'lucide-react'
+import { BadgeCheck, Bell, History, LogOut, MessageCircle, Moon, Settings, Sun, Truck, User } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import notificationService from '../services/notificationService'
@@ -101,12 +101,12 @@ export default function Navbar() {
   }
   const isHome = location.pathname === '/' || location.pathname === '/dashboard'
   return (
-    <nav className="bg-surface dark:bg-gray-900 shadow-md sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800">
-      <div className={`${isHome ? 'max-w-6xl' : 'max-w-7xl'} mx-auto px-4`}>
-        <div className="flex items-center justify-between h-16">
+    <nav className="bg-white dark:bg-slate-900 shadow-lg sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary/10 to-blue-600/10 rounded-xl flex items-center justify-center group-hover:from-primary/20 group-hover:to-blue-600/20 transition-all shadow-sm">
               <Truck className="w-6 h-6 text-primary" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
@@ -115,30 +115,31 @@ export default function Navbar() {
           </Link>
 
           {/* Main Navigation */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 flex-1 justify-center">
             {token && role === 'user' && (
               <>
                 <Link
                   to="/deliveries"
-                  className="px-4 py-2 text-sm font-medium text-textSecondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                 >
                   My Deliveries
                 </Link>
                 <Link
                   to="/order-history"
-                  className="px-4 py-2 text-sm font-medium text-textSecondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all flex items-center gap-1"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all inline-flex items-center gap-2"
                 >
-                  <History className="w-4 h-4" /> History
+                  <History className="w-4 h-4" />
+                  History
                 </Link>
                 <Link
                   to="/support"
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all shadow-md shadow-orange-600/20"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                 >
                   Support
                 </Link>
                 <Link
                   to="/new-delivery"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-600 rounded-lg transition-all shadow-md shadow-primary/20"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-blue-600 rounded-lg transition-all shadow-sm hover:shadow-md"
                 >
                   New Delivery
                 </Link>
@@ -148,9 +149,10 @@ export default function Navbar() {
               <>
                 <Link
                   to="/driver/dashboard"
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all shadow-md shadow-green-600/20 flex items-center gap-1"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-lg transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
                 >
-                  <Truck className="w-4 h-4" /> My Deliveries
+                  <Truck className="w-4 h-4" />
+                  My Deliveries
                 </Link>
               </>
             )}
@@ -158,19 +160,19 @@ export default function Navbar() {
               <>
                 <Link
                   to="/admin/deliveries"
-                  className="px-4 py-2 text-sm font-medium text-textSecondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                 >
                   Manage Deliveries
                 </Link>
                 <Link
                   to="/admin/users"
-                  className="px-4 py-2 text-sm font-medium text-textSecondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                 >
                   Manage Users
                 </Link>
                 <Link
                   to="/admin/support"
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-all shadow-md shadow-purple-600/20"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                 >
                   Support Management
                 </Link>
@@ -180,8 +182,9 @@ export default function Navbar() {
               <>
                 <Link
                   to="/agent/dashboard"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
                 >
+                  <MessageCircle className="w-4 h-4" />
                   My Tickets
                 </Link>
               </>

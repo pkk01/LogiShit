@@ -5,7 +5,23 @@ export default function Landing() {
   const isBrowser = typeof window !== 'undefined'
   const token = isBrowser ? localStorage.getItem('access_token') : null
   const userName = isBrowser ? localStorage.getItem('user_name') : null
-  const primaryCta = token ? '/dashboard' : '/login'
+  const role = isBrowser ? localStorage.getItem('role') : null
+
+  const getDashboardPath = () => {
+    if (!token) return '/login'
+    switch (role) {
+      case 'admin':
+        return '/admin/dashboard'
+      case 'driver':
+        return '/driver/dashboard'
+      case 'support_agent':
+        return '/agent/dashboard'
+      default:
+        return '/dashboard'
+    }
+  }
+
+  const primaryCta = getDashboardPath()
   const secondaryCta = token ? '/track' : '/register'
 
   const stats = [

@@ -16,12 +16,12 @@ const SupportDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Customer Support</h1>
-          <p className="text-gray-600 mt-2">Manage your support tickets and get help</p>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Customer Support</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Manage your support tickets and get help</p>
         </div>
 
         {/* Tabs */}
@@ -30,8 +30,8 @@ const SupportDashboard: React.FC = () => {
             onClick={() => setActiveTab('tickets')}
             className={`px-6 py-3 rounded-lg font-medium transition ${
               activeTab === 'tickets'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-800 hover:bg-gray-50'
+                ? 'bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg'
+                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
             My Tickets
@@ -40,15 +40,15 @@ const SupportDashboard: React.FC = () => {
             onClick={() => setActiveTab('new')}
             className={`px-6 py-3 rounded-lg font-medium transition ${
               activeTab === 'new'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-800 hover:bg-gray-50'
+                ? 'bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg'
+                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
             Create New Ticket
           </button>
           <button
             onClick={() => navigate('/support/faq')}
-            className="px-6 py-3 rounded-lg font-medium bg-white text-gray-800 hover:bg-gray-50 transition"
+            className="px-6 py-3 rounded-lg font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
           >
             FAQ & Knowledge Base
           </button>
@@ -63,7 +63,7 @@ const SupportDashboard: React.FC = () => {
           )}
 
           {activeTab === 'new' && (
-            <SupportTicketForm onSuccess={handleTicketCreated} />
+            <SupportTicketForm onTicketCreated={handleTicketCreated} />
           )}
         </div>
       </div>

@@ -10,8 +10,9 @@ from .views import (
     SupportAgentRegisterView, ApproveAgentView, CreateSupportTicketView, CustomerTicketsView,
     TicketDetailView, AssignToSelfView, UpdateTicketStatusView, ReassignTicketView,
     AddInternalNoteView, SubmitTicketFeedbackView, SupportFAQListView, AdminTicketsView, AgentTicketsView,
-    AdminSupportAgentsView
+    AdminSupportAgentsView, AgentTransferTicketView, AgentCloseTicketView
 )
+
 
 urlpatterns = [
         # Authentication
@@ -71,4 +72,6 @@ urlpatterns = [
     path('admin/support/tickets/', AdminTicketsView.as_view(), name='admin-tickets'),
     path('admin/support-agents/', AdminSupportAgentsView.as_view(), name='admin-support-agents'),
     path('agent/tickets/', AgentTicketsView.as_view(), name='agent-tickets'),
+    path('support/tickets/<str:ticket_id>/transfer/', AgentTransferTicketView.as_view(), name='transfer-ticket'),
+    path('support/tickets/<str:ticket_id>/close/', AgentCloseTicketView.as_view(), name='close-ticket'),
 ]

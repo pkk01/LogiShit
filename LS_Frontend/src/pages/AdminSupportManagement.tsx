@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { formatDate } from '../utils/dateFormat';
 
 interface AdminTicket {
   id: string;
@@ -10,6 +11,11 @@ interface AdminTicket {
   priority: string;
   customer_name: string;
   agent_name: string;
+  delivery_info?: {
+    id: string;
+    tracking_number: string;
+    package_type: string;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +34,8 @@ const AdminSupportManagement: React.FC = () => {
   const [assigningTicket, setAssigningTicket] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferringTicket, setTransferringTicket] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAllTickets();
@@ -95,33 +103,56 @@ const AdminSupportManagement: React.FC = () => {
     }
   };
 
+  const handleTransferTicket = async (ticketId: string, agentId: string) => {
+    try {
+      setTransferringTicket(ticketId);
+      const token = localStorage.getItem('access_token');
+      await axios.post(
+        `http://localhost:8000/api/support/tickets/${ticketId}/transfer/`,
+        { agent_id: agentId },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          }
+        }
+      );
+      setShowTransferModal(false);
+      setSelectedTicketId('');
+      fetchAllTickets(); // Refresh tickets
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to transfer ticket');
+    } finally {
+      setTransferringTicket(null);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Open':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
       case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
       case 'On Hold':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
       case 'Resolved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
       case 'Closed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'High':
-        return 'text-red-600';
+        return 'text-red-600 dark:text-red-400';
       case 'Medium':
-        return 'text-yellow-600';
+        return 'text-yellow-600 dark:text-yellow-400';
       case 'Low':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       default:
-        return 'text-gray-600';
+        return 'text-slate-600 dark:text-slate-400';
     }
   };
 
@@ -130,43 +161,43 @@ const AdminSupportManagement: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading support tickets...</div>;
+    return <div className="text-center py-8 text-slate-600 dark:text-slate-400">Loading support tickets...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Support Ticket Management</h2>
-          <p className="text-gray-600 mt-2">Manage all customer support tickets</p>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Support Ticket Management</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Manage all customer support tickets</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <p className="text-gray-600 text-sm">Total Tickets</p>
-            <p className="text-3xl font-bold text-gray-800">{tickets.length}</p>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Total Tickets</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{tickets.length}</p>
           </div>
-          <div className="bg-blue-50 rounded-lg shadow-md p-4 border-l-4 border-blue-600">
-            <p className="text-gray-600 text-sm">Open</p>
-            <p className="text-3xl font-bold text-blue-600">{tickets.filter(t => t.status === 'Open').length}</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow-md p-4 border-l-4 border-blue-600">
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Open</p>
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{tickets.filter(t => t.status === 'Open').length}</p>
           </div>
-          <div className="bg-yellow-50 rounded-lg shadow-md p-4 border-l-4 border-yellow-600">
-            <p className="text-gray-600 text-sm">In Progress</p>
-            <p className="text-3xl font-bold text-yellow-600">{tickets.filter(t => t.status === 'In Progress').length}</p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg shadow-md p-4 border-l-4 border-yellow-600">
+            <p className="text-slate-600 dark:text-slate-400 text-sm">In Progress</p>
+            <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{tickets.filter(t => t.status === 'In Progress').length}</p>
           </div>
-          <div className="bg-red-50 rounded-lg shadow-md p-4 border-l-4 border-red-600">
-            <p className="text-gray-600 text-sm">Unassigned</p>
-            <p className="text-3xl font-bold text-red-600">{getUnassignedCount()}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg shadow-md p-4 border-l-4 border-red-600">
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Unassigned</p>
+            <p className="text-3xl font-bold text-red-600 dark:text-red-400">{getUnassignedCount()}</p>
           </div>
         </div>
 
         {/* Filter */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-6">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">{error}</p>
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-700 dark:text-red-200">{error}</p>
             </div>
           )}
 
@@ -174,7 +205,7 @@ const AdminSupportManagement: React.FC = () => {
             <button
               onClick={() => setFilter('')}
               className={`px-4 py-2 rounded-lg transition ${
-                filter === '' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
+                filter === '' ? 'bg-indigo-600 dark:bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
               }`}
             >
               All Tickets
@@ -184,7 +215,7 @@ const AdminSupportManagement: React.FC = () => {
                 key={status}
                 onClick={() => setFilter(status)}
                 className={`px-4 py-2 rounded-lg transition ${
-                  filter === status ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
+                  filter === status ? 'bg-indigo-600 dark:bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
                 }`}
               >
                 {status}
@@ -194,59 +225,70 @@ const AdminSupportManagement: React.FC = () => {
         </div>
 
         {/* Tickets Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
           {tickets.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-6 text-center text-slate-500 dark:text-slate-400">
               <p>No tickets found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Subject</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Priority</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Assigned To</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Action</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Subject</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Order ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Category</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Status</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Priority</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Customer</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Agent</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Created</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tickets.map(ticket => (
-                    <tr key={ticket.id} className="border-b hover:bg-gray-50">
-                      <td className="px-6 py-4 text-gray-800 font-medium">{ticket.subject}</td>
-                      <td className="px-6 py-4 text-gray-600">{ticket.category}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(ticket.status)}`}>
+                    <tr key={ticket.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-3 py-2 text-slate-800 dark:text-slate-200 text-sm font-medium max-w-xs truncate">{ticket.subject}</td>
+                      <td className="px-3 py-2 text-sm">
+                        {ticket.delivery_info ? (
+                          <div>
+                            <p className="text-slate-900 dark:text-slate-100 font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{ticket.delivery_info.id.substring(0, 8)}...</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{ticket.delivery_info.tracking_number}</p>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 text-xs">No order</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm">{ticket.category}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
                           {ticket.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`font-medium ${getPriorityColor(ticket.priority)}`}>
+                      <td className="px-3 py-2">
+                        <span className={`font-medium text-sm ${getPriorityColor(ticket.priority)}`}>
                           {ticket.priority}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{ticket.customer_name}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-lg text-sm ${
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm max-w-xs truncate">{ticket.customer_name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-1 rounded-lg text-xs ${
                           ticket.agent_name === 'Unassigned'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-green-100 text-green-800'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                            : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                         }`}>
                           {ticket.agent_name}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-600 text-sm">
-                        {new Date(ticket.created_at).toLocaleDateString()}
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
+                        {formatDate(ticket.created_at)}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1 flex-nowrap">
                           <Link
                             to={`/support/tickets/${ticket.id}`}
-                            className="text-blue-600 hover:underline font-medium"
+                            className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-sm whitespace-nowrap"
                           >
                             View
                           </Link>
@@ -256,10 +298,22 @@ const AdminSupportManagement: React.FC = () => {
                                 setSelectedTicketId(ticket.id);
                                 setShowAssignModal(true);
                               }}
-                              className="text-green-600 hover:underline font-medium"
+                              className="text-green-600 dark:text-green-400 hover:underline font-medium text-sm whitespace-nowrap"
                               disabled={assigningTicket === ticket.id}
                             >
                               Assign
+                            </button>
+                          )}
+                          {ticket.agent_name !== 'Unassigned' && ticket.status !== 'Closed' && (
+                            <button
+                              onClick={() => {
+                                setSelectedTicketId(ticket.id);
+                                setShowTransferModal(true);
+                              }}
+                              className="text-orange-600 dark:text-orange-400 hover:underline font-medium text-sm whitespace-nowrap"
+                              disabled={transferringTicket === ticket.id}
+                            >
+                              Transfer
                             </button>
                           )}
                         </div>
@@ -276,11 +330,11 @@ const AdminSupportManagement: React.FC = () => {
       {/* Assign Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Assign Ticket to Agent</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Assign Ticket to Agent</h3>
             
             {agents.length === 0 ? (
-              <p className="text-gray-600 mb-4">No support agents available</p>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">No support agents available</p>
             ) : (
               <div className="space-y-2 mb-6">
                 {agents.map(agent => (
@@ -288,9 +342,9 @@ const AdminSupportManagement: React.FC = () => {
                     key={agent.id}
                     onClick={() => handleAssignTicket(selectedTicketId, agent.id)}
                     disabled={assigningTicket === selectedTicketId}
-                    className="w-full p-3 text-left border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition"
+                    className="w-full p-3 text-left border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-500 dark:hover:border-indigo-400 transition text-slate-800 dark:text-slate-200"
                   >
-                    <p className="font-medium text-gray-800">{agent.name}</p>
+                    <p className="font-medium">{agent.name}</p>
                   </button>
                 ))}
               </div>
@@ -301,7 +355,43 @@ const AdminSupportManagement: React.FC = () => {
                 setShowAssignModal(false);
                 setSelectedTicketId('');
               }}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
+              className="w-full px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Transfer Ticket to Another Agent</h3>
+            
+            {agents.length === 0 ? (
+              <p className="text-slate-600 dark:text-slate-400 mb-4">No support agents available</p>
+            ) : (
+              <div className="space-y-2 mb-6">
+                {agents.map(agent => (
+                  <button
+                    key={agent.id}
+                    onClick={() => handleTransferTicket(selectedTicketId, agent.id)}
+                    disabled={transferringTicket === selectedTicketId}
+                    className="w-full p-3 text-left border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-500 dark:hover:border-orange-400 transition text-slate-800 dark:text-slate-200"
+                  >
+                    <p className="font-medium">{agent.name}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <button
+              onClick={() => {
+                setShowTransferModal(false);
+                setSelectedTicketId('');
+              }}
+              className="w-full px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition font-medium"
             >
               Cancel
             </button>

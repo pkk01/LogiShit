@@ -1389,12 +1389,35 @@ class TicketDetailView(APIView):
         if user.role in ['support_agent', 'admin']:
             notes = TicketInternalNote.objects(ticket_id=ticket_id).order_by('created_at')
             for note in notes:
+                agent = User.objects(id=note.agent_id).first()
                 internal_notes.append({
                     "id": str(note.id),
                     "agent_id": note.agent_id,
+                    "agent_name": agent.name if agent else "Unknown Agent",
                     "note": note.note,
                     "created_at": note.created_at
                 })
+        
+        # Get customer and agent names
+        customer = User.objects(id=ticket.customer_id).first()
+        agent = User.objects(id=ticket.agent_id).first() if ticket.agent_id else None
+        
+        # Get delivery/order details if available
+        delivery_details = None
+        if ticket.delivery_id:
+            delivery = Delivery.objects(id=ticket.delivery_id).first()
+            if delivery:
+                delivery_details = {
+                    "id": str(delivery.id),
+                    "tracking_number": delivery.tracking_number,
+                    "package_type": delivery.package_type,
+                    "pickup_address": delivery.pickup_address,
+                    "delivery_address": delivery.delivery_address,
+                    "status": delivery.status,
+                    "weight": str(delivery.weight) if delivery.weight else None,
+                    "distance": str(delivery.distance) if delivery.distance else None,
+                    "price": str(delivery.price) if delivery.price else None
+                }
         
         return Response({
             "ticket": {
@@ -1405,7 +1428,11 @@ class TicketDetailView(APIView):
                 "status": ticket.status,
                 "priority": ticket.priority,
                 "agent_id": ticket.agent_id,
+                "agent_name": agent.name if agent else "Unassigned",
                 "customer_id": ticket.customer_id,
+                "customer_name": customer.name if customer else "Unknown",
+                "delivery_id": ticket.delivery_id,
+                "delivery_details": delivery_details,
                 "created_at": ticket.created_at,
                 "updated_at": ticket.updated_at,
                 "resolved_at": ticket.resolved_at
@@ -1617,6 +1644,121 @@ class AddInternalNoteView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class AgentTransferTicketView(APIView):
+    """Support agent or admin transfers ticket to another agent"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is admin or support agent
+        user = User.objects(id=user_id).first()
+        if not user or user.role not in ['admin', 'support_agent']:
+            return Response({"error": "Only admins and support agents can transfer tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Admins can transfer any ticket, agents can only transfer their own
+        if user.role == 'support_agent' and ticket.agent_id != user_id:
+            return Response({"error": "You can only transfer your own tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        new_agent_id = request.data.get('agent_id')
+        if not new_agent_id:
+            return Response({"error": "agent_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        new_agent = User.objects(id=new_agent_id, role='support_agent', is_support_agent_approved='true').first()
+        if not new_agent:
+            return Response({"error": "New agent not found or not approved"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if new_agent_id == user_id:
+            return Response({"error": "Cannot transfer to yourself"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        old_agent_id = ticket.agent_id
+        ticket.agent_id = new_agent_id
+        ticket.updated_at = datetime.utcnow()
+        ticket.save()
+        
+        # Add internal note about transfer
+        note = TicketInternalNote(
+            ticket_id=ticket_id,
+            agent_id=user_id,
+            note=f'Ticket transferred to {new_agent.name} by {user.name}'
+        )
+        note.save()
+        
+        # Notify new agent
+        notification = Notification(
+            recipient_id=new_agent_id,
+            recipient_role='support_agent',
+            title='Ticket Transferred to You',
+            message=f'Ticket "{ticket.subject}" has been transferred to you from {user.name}.',
+            notification_type='info',
+            action_url=f'/support/tickets/{str(ticket.id)}/'
+        )
+        notification.save()
+        
+        return Response({
+            "message": "Ticket transferred successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "agent_id": new_agent_id,
+                "agent_name": new_agent.name
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class AgentCloseTicketView(APIView):
+    """Support agent closes a resolved ticket"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, ticket_id):
+        user_id = getattr(request.user, 'id', None)
+        
+        # Check if user is support agent
+        user = User.objects(id=user_id, role='support_agent').first()
+        if not user:
+            return Response({"error": "Only support agents can close tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        ticket = SupportTicket.objects(id=ticket_id).first()
+        if not ticket:
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if agent owns this ticket
+        if ticket.agent_id != user_id:
+            return Response({"error": "You can only close your own tickets"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Can only close resolved tickets
+        if ticket.status != 'Resolved':
+            return Response({"error": "Only resolved tickets can be closed"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        ticket.status = 'Closed'
+        ticket.closed_at = datetime.utcnow()
+        ticket.updated_at = datetime.utcnow()
+        ticket.save()
+        
+        # Notify customer
+        notification = Notification(
+            recipient_id=ticket.customer_id,
+            recipient_role='user',
+            title='Support Ticket Closed',
+            message=f'Your support ticket "{ticket.subject}" has been closed.',
+            notification_type='success',
+            action_url=f'/support/tickets/{str(ticket.id)}/'
+        )
+        notification.save()
+        
+        return Response({
+            "message": "Ticket closed successfully",
+            "ticket": {
+                "id": str(ticket.id),
+                "status": ticket.status,
+                "closed_at": ticket.closed_at
+            }
+        }, status=status.HTTP_200_OK)
+
+
 class SubmitTicketFeedbackView(APIView):
     """Customer submits feedback on resolved ticket"""
     permission_classes = [IsAuthenticated]
@@ -1711,6 +1853,17 @@ class AdminTicketsView(APIView):
             customer = User.objects(id=ticket.customer_id).first()
             agent = User.objects(id=ticket.agent_id).first() if ticket.agent_id else None
             
+            # Get delivery info if available
+            delivery_info = None
+            if ticket.delivery_id:
+                delivery = Delivery.objects(id=ticket.delivery_id).first()
+                if delivery:
+                    delivery_info = {
+                        "id": str(delivery.id),
+                        "tracking_number": delivery.tracking_number,
+                        "package_type": delivery.package_type
+                    }
+            
             ticket_list.append({
                 "id": str(ticket.id),
                 "subject": ticket.subject,
@@ -1719,6 +1872,7 @@ class AdminTicketsView(APIView):
                 "priority": ticket.priority,
                 "customer_name": customer.name if customer else "Unknown",
                 "agent_name": agent.name if agent else "Unassigned",
+                "delivery_info": delivery_info,
                 "created_at": ticket.created_at,
                 "updated_at": ticket.updated_at
             })
@@ -1751,6 +1905,17 @@ class AgentTicketsView(APIView):
         for ticket in tickets:
             customer = User.objects(id=ticket.customer_id).first()
             
+            # Get delivery info if available
+            delivery_info = None
+            if ticket.delivery_id:
+                delivery = Delivery.objects(id=ticket.delivery_id).first()
+                if delivery:
+                    delivery_info = {
+                        "id": str(delivery.id),
+                        "tracking_number": delivery.tracking_number,
+                        "package_type": delivery.package_type
+                    }
+            
             ticket_list.append({
                 "id": str(ticket.id),
                 "subject": ticket.subject,
@@ -1760,6 +1925,7 @@ class AgentTicketsView(APIView):
                 "priority": ticket.priority,
                 "customer_name": customer.name if customer else "Unknown",
                 "customer_id": ticket.customer_id,
+                "delivery_info": delivery_info,
                 "created_at": ticket.created_at,
                 "updated_at": ticket.updated_at
             })
