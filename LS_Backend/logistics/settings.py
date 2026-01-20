@@ -38,7 +38,7 @@ MIDDLEWARE = [
 # CORS Settings
 CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'
+    'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://logi-shift-inky.vercel.app,https://logishift.onrender.com'
 ).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
@@ -130,4 +130,4 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'LogiShift <prathamdowork@g
 EMAIL_SUBJECT_PREFIX = '[LogiShift] '
 
 # Frontend URL Configuration
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://logi-shift-inky.vercel.app')

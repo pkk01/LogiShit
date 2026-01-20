@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { apiUrl } from '../utils/apiBase';
 import { formatDateTime } from '../utils/dateFormat';
 
 interface DeliveryDetails {
@@ -67,7 +68,7 @@ const TicketDetailView: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        `http://localhost:8000/api/support/tickets/${ticketId}/`,
+        apiUrl(`/support/tickets/${ticketId}/`),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -91,7 +92,7 @@ const TicketDetailView: React.FC = () => {
       setSubmittingNote(true);
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
-        `http://localhost:8000/api/support/tickets/${ticketId}/add-note/`,
+        apiUrl(`/support/tickets/${ticketId}/add-note/`),
         { note: newNote },
         {
           headers: {
@@ -120,7 +121,7 @@ const TicketDetailView: React.FC = () => {
       setClosingTicket(true);
       const token = localStorage.getItem('access_token');
       await axios.post(
-        `http://localhost:8000/api/support/tickets/${ticketId}/close/`,
+        apiUrl(`/support/tickets/${ticketId}/close/`),
         {},
         {
           headers: {
@@ -141,7 +142,7 @@ const TicketDetailView: React.FC = () => {
       setUpdatingStatus(true);
       const token = localStorage.getItem('access_token');
       await axios.put(
-        `http://localhost:8000/api/support/tickets/${ticketId}/update-status/`,
+        apiUrl(`/support/tickets/${ticketId}/update-status/`),
         { status: newStatus },
         {
           headers: {

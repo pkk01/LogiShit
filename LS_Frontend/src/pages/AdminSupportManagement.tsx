@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiUrl } from '../utils/apiBase';
 import { formatDate } from '../utils/dateFormat';
 
 interface AdminTicket {
@@ -47,8 +48,8 @@ const AdminSupportManagement: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token');
       const url = filter
-        ? `http://localhost:8000/api/admin/support/tickets/?status=${filter}`
-        : 'http://localhost:8000/api/admin/support/tickets/';
+        ? `${apiUrl('/admin/support/tickets/')}?status=${filter}`
+        : apiUrl('/admin/support/tickets/');
 
       const response = await axios.get(url, {
         headers: {
@@ -67,7 +68,7 @@ const AdminSupportManagement: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        'http://localhost:8000/api/admin/support-agents/',
+        apiUrl('/admin/support-agents/'),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -85,7 +86,7 @@ const AdminSupportManagement: React.FC = () => {
       setAssigningTicket(ticketId);
       const token = localStorage.getItem('access_token');
       await axios.post(
-        `http://localhost:8000/api/support/tickets/${ticketId}/reassign/`,
+        apiUrl(`/support/tickets/${ticketId}/reassign/`),
         { agent_id: agentId },
         {
           headers: {
@@ -108,7 +109,7 @@ const AdminSupportManagement: React.FC = () => {
       setTransferringTicket(ticketId);
       const token = localStorage.getItem('access_token');
       await axios.post(
-        `http://localhost:8000/api/support/tickets/${ticketId}/transfer/`,
+        apiUrl(`/support/tickets/${ticketId}/transfer/`),
         { agent_id: agentId },
         {
           headers: {

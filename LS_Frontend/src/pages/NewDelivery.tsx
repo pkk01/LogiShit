@@ -2,6 +2,7 @@ import axios from 'axios'
 import { ArrowLeft, Calendar, Check, IndianRupee, Loader2, MapPin, Package, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { apiUrl } from '../utils/apiBase'
 import { getCitiesForState, indiaStates } from '../utils/indiaLocations'
 import { formatPrice, PACKAGE_TYPES } from '../utils/priceFormat'
 
@@ -113,7 +114,7 @@ export default function NewDelivery() {
 
     setEstimating(true)
     try {
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+      const backendUrl = apiUrl()
       const payload = {
         pickup_pincode: pickupPincode.toString(),
         delivery_pincode: deliveryPincode.toString(),
@@ -160,7 +161,7 @@ export default function NewDelivery() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('access_token')
-    const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+    const backendUrl = apiUrl()
 
     const pickupRequired = [form.pickup.line1, form.pickup.city, form.pickup.state, form.pickup.pincode].every(Boolean)
     const deliveryRequired = [form.delivery.line1, form.delivery.city, form.delivery.state, form.delivery.pincode].every(Boolean)

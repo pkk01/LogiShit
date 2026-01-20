@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiUrl } from '../utils/apiBase';
 
 interface Ticket {
   id: string;
@@ -27,7 +28,7 @@ const CustomerTicketsList: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        'http://localhost:8000/api/support/tickets/',
+        apiUrl('/support/tickets/'),
         {
           headers: {
             'Authorization': `Bearer ${token}`,

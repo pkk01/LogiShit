@@ -2,6 +2,7 @@ import axios from 'axios';
 import { AlertCircle, CheckCircle, Clock, Link as LinkIcon, MessageCircle, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiUrl } from '../utils/apiBase';
 import { formatDate } from '../utils/dateFormat';
 
 interface AgentTicket {
@@ -43,7 +44,7 @@ const AgentDashboard: React.FC = () => {
   const fetchAgentProfile = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('/api/profile/', {
+      const response = await axios.get(apiUrl('/profile/'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setProfile(response.data);
@@ -57,8 +58,8 @@ const AgentDashboard: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token');
       const url = filter
-        ? `http://localhost:8000/api/agent/tickets/?status=${filter}`
-        : 'http://localhost:8000/api/agent/tickets/';
+        ? `${apiUrl('/agent/tickets/')}?status=${filter}`
+        : apiUrl('/agent/tickets/');
 
       const response = await axios.get(url, {
         headers: {
@@ -115,7 +116,7 @@ const AgentDashboard: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        'http://localhost:8000/api/admin/support/tickets/?status=Open',
+        apiUrl('/admin/support/tickets/?status=Open'),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -135,7 +136,7 @@ const AgentDashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       await axios.post(
-        `http://localhost:8000/api/support/tickets/${ticketId}/close/`,
+        apiUrl(`/support/tickets/${ticketId}/close/`),
         {},
         {
           headers: {

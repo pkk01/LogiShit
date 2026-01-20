@@ -1,5 +1,6 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
+import { apiUrl } from '../utils/apiBase';
 
 interface FAQ {
   id: string;
@@ -23,8 +24,8 @@ const SupportFAQ: React.FC = () => {
     try {
       setLoading(true);
       const url = selectedCategory
-        ? `http://localhost:8000/api/support/faq/?category=${selectedCategory}`
-        : 'http://localhost:8000/api/support/faq/';
+        ? `${apiUrl('/support/faq/')}?category=${selectedCategory}`
+        : apiUrl('/support/faq/');
 
       const response = await axios.get(url);
       setFaqs(response.data.faqs);

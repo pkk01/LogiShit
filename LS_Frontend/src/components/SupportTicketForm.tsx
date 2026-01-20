@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AlertCircle, Package } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { apiUrl } from '../utils/apiBase';
 
 interface Order {
   id: string;
@@ -33,7 +34,7 @@ export default function SupportTicketForm({ deliveryId, onTicketCreated }: Suppo
     const fetchOrders = async () => {
       try {
         setLoadingOrders(true);
-        const response = await axios.get('http://localhost:8000/api/deliveries/', {
+        const response = await axios.get(apiUrl('/deliveries/'), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -86,7 +87,7 @@ export default function SupportTicketForm({ deliveryId, onTicketCreated }: Suppo
         description: description.trim(),
       };
 
-      await axios.post('http://localhost:8000/api/support/tickets/create/', ticketData, {
+      await axios.post(apiUrl('/support/tickets/create/'), ticketData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

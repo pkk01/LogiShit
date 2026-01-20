@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from '../utils/apiBase';
 
 const SupportAgentRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -44,7 +45,7 @@ const SupportAgentRegister: React.FC = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/api/support/register-agent/',
+        apiUrl('/support/register-agent/'),
         formData,
         {
           headers: {
